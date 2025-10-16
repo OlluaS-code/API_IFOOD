@@ -15,7 +15,7 @@ export const getProductByIdValidation = validation((getSchema) => ({
 }));
 
 export const productById = (req: Request<IGetProductsParams>, res: Response) => {
-    const id = req.params.id as number;
+    const id = Number(req.params.id);
 
     const product = ProductRepository.findByID(id);
 

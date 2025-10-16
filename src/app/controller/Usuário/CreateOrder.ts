@@ -7,7 +7,7 @@ import { ProductRepository } from '../../database/Produtos/ProdutoData';
 
 export const createOrder = async (req: Request, res: Response) => {
 
-    const userId = req.userId as number;
+    const userId = Number(req.userId);
 
     const cart = CartRepository.getCart(userId);
 

@@ -6,17 +6,9 @@ export interface IStoreWithoutId {
   phone: string;
 }
 
-export const stores: Array<any> = [
-    {
-        id: 1,
-        name: "Loja Fixa de Testes",
-        category: "Geral",
-        address: "Av. do Teste",
-        phone: "55551234"
-    }
-];
+export const stores: Array<any> = [];
 
-let nextId = 2;
+let nextId = 1;
 
 export const StoreRepository = {
 

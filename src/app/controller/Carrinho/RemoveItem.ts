@@ -17,7 +17,7 @@ export const removeItemValidation = validation((getSchema) => ({
 
 export const removeItem = async (req: Request<IRemoveItemBody, {}, {}>, res: Response) => {
 
-    const id = req.params.id as number;
+    const id = Number(req.params.id);
 
     const wasRemoved = CartRepository.removeItemById(id);
 
