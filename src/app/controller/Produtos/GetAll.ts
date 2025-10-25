@@ -7,7 +7,7 @@ import { ProductRepository } from "../../database/Produtos/ProdutoData";
 
 export const getAllProducts = async (req: Request, res: Response) => {
 
-    const productsList = ProductRepository.getAll();
+    const productsList = await ProductRepository.getAll();
 
     return res.status(StatusCodes.OK).json(productsList);
 };

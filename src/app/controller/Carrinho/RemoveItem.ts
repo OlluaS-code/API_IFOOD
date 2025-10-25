@@ -4,26 +4,30 @@ import * as yup from "yup";
 import { validation } from "../../shared/middlewares";
 import { CartRepository } from "../../database/Carrinho/CarrinhoData";
 
-
-export interface IRemoveItemBody {
-    id?: number;
+export interface IRemoveItemParams {
+    usuario_ID?: number;
+    item_ID?: number;
 }
 
-export const removeItemValidation = validation((getSchema) => ({
-    params: getSchema<IRemoveItemBody>(yup.object().shape({
-        id: yup.number().required().defined().moreThan(0),
+export const removeItemByIdValidation = validation((getSchema) => ({
+    params: getSchema<IRemoveItemParams>(yup.object().shape({
+        usuario_ID: yup.number().required().defined().moreThan(0),
+        item_ID: yup.number().integer().required().moreThan(0),
     })),
 }));
 
-export const removeItem = async (req: Request<IRemoveItemBody, {}, {}>, res: Response) => {
+export const removeItemById = async (req: Request<IRemoveItemParams, {}, {}>, res: Response) => {
 
-    const id = Number(req.params.id);
+    const usuario_ID = Number(req.params.usuario_ID);
+    const item_ID = Number(req.params.item_ID);
 
-    const wasRemoved = CartRepository.removeItemById(id);
+    const wasDeleted = await CartRepository.removeItemById(item_ID, usuario_ID);
 
-    return wasRemoved
-        ? res.status(StatusCodes.NO_CONTENT).send()
-        : res.status(StatusCodes.NOT_FOUND).json({
-            error: `Produto com ID ${id} não encontrado no carrinho.`
+    if (wasDeleted) {
+        return res.status(StatusCodes.NO_CONTENT).send();
+    } else {
+        return res.status(StatusCodes.NOT_FOUND).json({
+            error: `Item ID ${item_ID} não encontrado no carrinho do Usuário ID ${usuario_ID}, ou acesso negado.`
         });
+    }
 };

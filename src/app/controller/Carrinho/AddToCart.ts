@@ -5,6 +5,10 @@ import { validation } from '../../shared/middlewares/Validation';
 import { ProductRepository } from '../../database/Produtos/ProdutoData';
 import { CartRepository } from '../../database/Carrinho/CarrinhoData';
 
+export interface ICartParams {
+    usuario_ID?: number
+    storeId?: number
+}
 
 export interface IAddToCartBody {
     productId: number;
@@ -12,6 +16,10 @@ export interface IAddToCartBody {
 }
 
 export const addToCartValidation = validation((getSchema) => ({
+    params: getSchema<ICartParams>(yup.object().shape({
+            usuario_ID: yup.number().required().defined().moreThan(0),
+            storeId: yup.number().integer().required().moreThan(0)
+        })),
     body: getSchema<IAddToCartBody>(yup.object().shape({
         productId: yup.number().required().defined().moreThan(0),
         quantity: yup.number().required().defined().moreThan(0).integer(),
@@ -19,11 +27,13 @@ export const addToCartValidation = validation((getSchema) => ({
 }));
 
 
-export const addToCart = async (req: Request<{}, {}, IAddToCartBody>, res: Response) => {
+export const addToCart = async (req: Request<ICartParams, {}, IAddToCartBody>, res: Response) => {
 
+    const usuario_ID = Number(req.params.usuario_ID);
+    const store_ID = Number(req.params.storeId);
     const { productId, quantity } = req.body;
 
-    const product = ProductRepository.findByID(productId);
+    const product = await ProductRepository.findById(store_ID, productId);
 
     if (!product) {
         return res.status(StatusCodes.NOT_FOUND).json({
@@ -32,15 +42,15 @@ export const addToCart = async (req: Request<{}, {}, IAddToCartBody>, res: Respo
     }
 
     if (product.stock < quantity) {
-    return res.status(StatusCodes.BAD_REQUEST).json({
-        error: `Estoque insuficiente. Disponível: ${product.stock} unidade(s).`
-    });
-}
+        return res.status(StatusCodes.BAD_REQUEST).json({
+            error: `Estoque insuficiente. Disponível: ${product.stock} unidade(s).`
+        });
+    }
 
-    const updatedItem = CartRepository.addItem(product, quantity);
+    const postItem = await CartRepository.addItem(product.produto_ID, usuario_ID, quantity);
 
     return res.status(StatusCodes.CREATED).json({
         message: 'Produto adicionado/atualizado no carrinho.',
-        item: updatedItem
+        item: postItem
     });
 };

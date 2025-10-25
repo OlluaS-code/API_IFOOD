@@ -1,70 +1,120 @@
+import { ICreateProduct } from "../../controller/Produtos/CreateProduct";
+import connection from "../connection/conection";
+import { ResultSetHeader, RowDataPacket } from 'mysql2';
 
+export interface Products extends RowDataPacket {
+    produto_ID: number,
+    storeId: number,
+    name: string,
+    price: number,
+    stock: number
+}
 
-export const products: Array<any> = [];
-
-let nextId = 1;
+type DecreaseResult = { success: true; affectedRows: number } | { success: false; code: string; message: string };
 
 export const ProductRepository = {
 
-    findByID: (id: number) => {
-        return products.find(product => product.id === id);
+    async create(userData: ICreateProduct) {
+
+        const { storeId, name, price, stock } = userData;
+
+        console.log('Dados recebidos:', { storeId, name, price, stock });
+
+        const query = 'INSERT INTO Produto (storeId, name, price, stock) VALUES( ?, ?, ?, ?)';
+
+        const [result] = await connection.execute(query, [
+            storeId,
+            name,
+            price,
+            stock
+        ]) as [ResultSetHeader, any];
+
+        return result.insertId;
     },
+    async getAll() {
 
-    create: (productData: any) => {
-        const newProduct = {
-            id: nextId++,
-            ...productData
-        };
-        products.push(newProduct);
-        return newProduct;
+        const query = 'SELECT * FROM Produto';
+
+        const [rows] = await connection.execute<Products[]>(query);
+
+        return rows;
     },
+    async findByStoreId(loja_ID: number): Promise<Products[]> {
 
-    update: (id: number, productData: any) => {
-        const index = products.findIndex(product => product.id === id);
+        const query = 'SELECT produto_ID, name, price, stock FROM Produto WHERE storeId = ?';
 
-        if (index === -1) {
-            return false;
+        const [rows] = await connection.execute<Products[]>(query, [loja_ID]);
+
+        return rows;
+    },
+    async findById(loja_ID: number, produto_ID: number): Promise<Products | undefined>{
+
+        const query = `SELECT * FROM Produto WHERE produto_ID = ? and storeId = ?`;
+
+        const [rows] = await connection.execute<Products[]>(query, [produto_ID, loja_ID]);
+
+        return rows[0];
+    },
+    async updatePartial(product_ID: number, storeId: number, userData: any): Promise<number> {
+
+        const fieldsToUpdate = Object.keys(userData);
+        const values = Object.values(userData);
+
+        if (fieldsToUpdate.length === 0) {
+            return 0;
         }
 
-        products[index] = {
-            ...products[index],
-            ...productData,
-            id: id,
-        };
+        const setClause = fieldsToUpdate.map(field => `${field} = ?`).join(', ');
 
-        return products[index];
+        const query = `UPDATE Produto SET ${setClause} WHERE product_ID = ? AND storeId = ?`;
+
+        values.push(product_ID);
+        values.push(storeId);
+
+        const [result] = await connection.execute(query, values as any[]) as [ResultSetHeader, any];
+
+        return result.affectedRows;
     },
+    async decreaseStock(produto_ID: number, quantity: number, loja_ID: number): Promise<DecreaseResult> {
 
-    getAll: () => {
-        return products;
-    },
+        const selectQuery = `SELECT stock, storeId FROM Produto WHERE produto_ID = ?`;
+        const [rows] = await connection.execute<Products[]>(selectQuery, [produto_ID]);
 
-    decreaseStock: (productId: number, quantity: number) => {
-        const index = products.findIndex(product => product.id === productId);
+        const product = rows[0];
 
-        if (index === -1) {
-            return false;
+        if (!product) {
+            return { success: false, code: 'NOT_FOUND', message: `Produto ID ${produto_ID} não encontrado.` };
         }
 
-        if (products[index].stock < quantity) {
-            return false;
+        if (product.storeId !== loja_ID) {
+            return { success: false, code: 'ACCESS_DENIED', message: `Acesso negado. Produto não pertence à Loja ID ${loja_ID}.` };
         }
 
-        products[index].stock -= quantity;
-        return true;
-    },
-    delete: (id: number) => {
-
-        const initialLength = products.length;
-
-        const updatedProducts = products.filter(product => product.id !== id);
-
-        const wasDeleted = updatedProducts.length < initialLength;
-
-        if (wasDeleted) {
-            const products = updatedProducts;
+        if (product.stock < quantity) {
+            return { success: false, code: 'INSUFFICIENT_STOCK', message: `Estoque insuficiente. Disponível: ${product.stock}.` };
         }
 
-        return wasDeleted;
+        const updateQuery = `
+            UPDATE Produto
+            SET stock = stock - ?
+            WHERE produto_ID = ? AND storeId = ? AND stock >= ?
+        `;
+
+        const [result] = await connection.execute(updateQuery, [
+            quantity,
+            produto_ID,
+            loja_ID,
+            quantity
+        ]) as [ResultSetHeader, any];
+
+        return { success: true, affectedRows: result.affectedRows };
     },
+    async delete(product_ID: number, storeId: number): Promise<number> {
+
+        const query = `DELETE FROM Produto WHERE product_ID = ? AND storeId = ?`;
+
+        const [result] = await connection.execute(query, [product_ID, storeId]) as [ResultSetHeader, any];
+
+        return result.affectedRows;
+    }
 };

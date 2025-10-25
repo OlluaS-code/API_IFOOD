@@ -6,36 +6,36 @@ import { UserRepository } from '../../database/Usuário/UsuarioData';
 
 
 export interface ILoginBody {
-  email: string;
-  password: string;
+    email: string;
+    password: string;
 }
 
 export const loginValidation = validation((getSchema) => ({
-  body: getSchema<ILoginBody>(yup.object().shape({
-    email: yup.string().email().required().min(5),
-    password: yup.string().required().min(6),
-  })),
+    body: getSchema<ILoginBody>(yup.object().shape({
+        email: yup.string().email().required().min(5),
+        password: yup.string().required().min(6),
+    })),
 }));
 
 
 export const login = async (req: Request<{}, {}, ILoginBody>, res: Response) => {
 
-  const { email, password } = req.body;
+    const { email, password } = req.body;
 
-  const user = UserRepository.findByEmail(email);
+    const user = await UserRepository.findByEmail(email);
 
-  if (!user) {
-    return res.status(StatusCodes.UNAUTHORIZED).json({
-      error: 'Email ou senha inválidos.'
-    });
-  }
+    if (!user) {
+        return res.status(StatusCodes.UNAUTHORIZED).json({
+            error: 'Email ou senha inválidos.'
+        });
+    }
 
-  const isPasswordValid = user.password === password;
+    const isPasswordValid = user.password === password;
 
-  return isPasswordValid
-    ? res.status(StatusCodes.OK).json({
-        message: 'Login realizado com sucesso!',
-        token: 'SIMULATED_JWT_TOKEN_' + user.id
-      })
-    : res.status(StatusCodes.UNAUTHORIZED).json({ error: 'Email ou senha inválidos.' });
+    return isPasswordValid
+        ? res.status(StatusCodes.OK).json({
+            message: 'Login realizado com sucesso!',
+            token: 'SIMULATED_JWT_TOKEN_' + user.usuario_ID
+        })
+        : res.status(StatusCodes.UNAUTHORIZED).json({ error: 'Email ou senha inválidos.' });
 };

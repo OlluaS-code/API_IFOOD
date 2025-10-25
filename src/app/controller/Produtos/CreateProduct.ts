@@ -5,26 +5,26 @@ import { validation } from "../../shared/middlewares";
 import { ProductRepository } from "../../database/Produtos/ProdutoData";
 
 export interface ICreateProduct {
-    name: string,
     storeId: number,
+    name: string,
     price: number,
     stock: number
 }
 
 export const createProductValidator = validation((getSchema) => ({
     body: getSchema<ICreateProduct>(yup.object().shape({
-        name: yup.string().required().defined().min(3),
         storeId: yup.number().required().defined().moreThan(0),
+        name: yup.string().required().defined().min(3),
         price: yup.number().required().integer().moreThan(0),
         stock: yup.number().required().integer().moreThan(0)
     })),
 }));
 
 
-export const createProduct = (req: Request<{}, {}, ICreateProduct>, res: Response) => {
+export const createProduct = async (req: Request<{}, {}, ICreateProduct>, res: Response) => {
     const productData = req.body;
 
-    const newProduct = ProductRepository.create(productData);
+    const newProduct = await ProductRepository.create(productData);
 
     return res.status(StatusCodes.CREATED).json({
         message: "Produto cadatrado com sucesso.",

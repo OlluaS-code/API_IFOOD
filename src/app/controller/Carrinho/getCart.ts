@@ -18,7 +18,7 @@ export const getCart = async (req: Request<IGetCartParams>, res: Response) => {
 
     const userId = Number(req.params.userId);
 
-    const cartList = CartRepository.getCart(userId);
+    const cartList = await CartRepository.getCart(userId);
 
     return res.status(StatusCodes.OK).json(cartList);
 };

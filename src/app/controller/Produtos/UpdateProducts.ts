@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import * as yup from "yup";
-import { validation } from "../../shared/middlewares";
 import { ProductRepository } from "../../database/Produtos/ProdutoData";
+import { validation } from "../../shared/middlewares";
 
-export interface IUpdateProductsParams {
+export interface IUpdateProductParams {
+    storeId?: number;
     id?: number;
 }
 
@@ -14,8 +15,9 @@ export interface IUpdateProductBody {
     stock: number | undefined;
 }
 
-export const removeItemValidation = validation((getSchema) => ({
-    params: getSchema<IUpdateProductsParams>(yup.object().shape({
+export const UpdateItemValidation = validation((getSchema) => ({
+    params: getSchema<IUpdateProductParams>(yup.object().shape({
+        storeId: yup.number().required().defined().moreThan(0),
         id: yup.number().required().defined().moreThan(0),
     })),
     body: getSchema<IUpdateProductBody>(yup.object().shape({
@@ -25,15 +27,22 @@ export const removeItemValidation = validation((getSchema) => ({
     })),
 }));
 
-export const updateProducts = (req: Request<IUpdateProductsParams, {}, IUpdateProductBody>, res: Response) => {
-    const id = Number(req.params.id);
-    const productData = req.body;
+export const updateProducts = async (req: Request<IUpdateProductParams, {}, IUpdateProductBody>, res: Response) => {
 
-    const WasUpdate = ProductRepository.update(id, productData);
+    const product_ID = Number(req.params.id);
+    const store_ID_Auth = Number(req.params.storeId);
 
-    return WasUpdate
+    const userData = req.body;
+
+    const WasUpdate = await ProductRepository.updatePartial(
+        product_ID,
+        store_ID_Auth,
+        userData
+    );
+
+    return WasUpdate > 0
         ? res.status(StatusCodes.NO_CONTENT).send()
         : res.status(StatusCodes.NOT_FOUND).json({
-            error: `Produto com ID ${id} não encontrado.`
+            error: `Produto ID ${product_ID} não encontrado na Loja ID ${store_ID_Auth}, ou acesso negado.`
         });
 };

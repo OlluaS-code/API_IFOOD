@@ -3,7 +3,7 @@ import { StatusCodes } from 'http-status-codes';
 
 declare module 'express-serve-static-core' {
   interface Request {
-    userId?: number;
+    usuario_ID?: number;
   }
 }
 
@@ -19,7 +19,7 @@ export const ensureAuthenticated = (req: Request, res: Response, next: NextFunct
     const token = authHeader.split(' ')[1];
 
     if (token === 'SIMULATED_TOKEN_1') {
-        req.userId = 1;
+        req.usuario_ID = 1;
 
         return next();
     }

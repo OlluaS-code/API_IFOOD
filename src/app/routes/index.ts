@@ -23,6 +23,16 @@ router.post(
     UserController.login
 );
 
+router.get(
+    '/users',
+    UserController.GetAll
+);
+
+router.get(
+    '/users/:id',
+    UserController.FindByIdValidation,
+    UserController.FindById
+);
 //LOJA --------------------------------------------------------
 
 router.post(
@@ -37,25 +47,37 @@ router.get(
 );
 
 router.post(
-    '/stores/:storeId/products',
+    '/stores/:store_ID/products',
     StoreController.postProductsValidation,
     StoreController.postProducts
+);
+
+router.get(
+    '/stores/:store_ID',
+    StoreController.StoreByIdValidation,
+    StoreController.StoreById
+);
+
+router.put(
+    '/stores/:store_ID',
+    StoreController.UpdateStoreValidation,
+    StoreController.UpdateStore
 );
 
 //CARRINHO (REQUER AUTENTICAÇÃO) -------------------------------
 
 router.post(
-    '/cart',
+    '/cart/:usuario_ID/loja/:storeId',
     ensureAuthenticated,
     CarrinhoController.addToCartValidation,
     CarrinhoController.addToCart
 );
 
 router.delete(
-    '/cart/:id',
+    'cart/:usuario_ID/itens/:item_ID',
     ensureAuthenticated,
-    CarrinhoController.removeItemValidation,
-    CarrinhoController.removeItem
+    CarrinhoController.removeItemByIdValidation,
+    CarrinhoController.removeItemById
 );
 
 router.get(
@@ -67,28 +89,34 @@ router.get(
 //PEDIDO (REQUER AUTENTICAÇÃO) ---------------------------------
 
 router.post(
-    '/orders',
+    '/users/:usuario_ID/orders',
     ensureAuthenticated,
     UserController.createOrder
 );
 
 router.get(
-    '/orders',
+    '/users/:usuario_ID/orders',
     ensureAuthenticated,
     UserController.getOrders
 );
 
 //PRODUTO -----------------------------------------------------
 
+router.get(
+    '/products/:storeId',
+    ProductController.getByStoreIdValidation,
+    ProductController.productByStoreId
+);
+
 router.put(
-    '/products/:id',
-    ProductController.removeItemValidation,
+    'stores/:storeId/products/:id',
+    ProductController.UpdateItemValidation,
     ProductController.updateProducts
 );
 
 router.delete(
-    '/products/:id',
-    ProductController.deleteProductsValidation, // <--- Valida se o ID existe
+    'stores/:storeId/products/:id',
+    ProductController.deleteProductsValidation,
     ProductController.deleteProducts
 );
 export default router;

@@ -1,41 +1,51 @@
+import { ResultSetHeader, RowDataPacket } from 'mysql2';
+import connection from '../connection/conection';
 
-
-export let cartItems: Array<any> = [];
+export interface ICartItem extends RowDataPacket {
+    item_ID: number;
+    usuario_ID: number;
+    produto_ID: number;
+    quantity: number;
+}
 
 export const CartRepository = {
 
-    getCart: (userId: number) => {
-        return cartItems;
+    async getCart(usuario_ID: number): Promise<ICartItem[]> {
+        const query = `
+            SELECT
+                item_ID, produto_ID, quantity
+            FROM Carrinho
+            WHERE usuario_ID = ?
+        `;
+        const [rows] = await connection.execute<ICartItem[]>(query, [usuario_ID]);
+        return rows;
     },
 
-    clearCart: () => {
-        cartItems = [];
-        return true;
+    async clearCart(usuario_ID: number): Promise<boolean> {
+        const query = 'DELETE FROM Carrinho WHERE usuario_ID = ?';
+        const [result] = await connection.execute(query, [usuario_ID]) as [ResultSetHeader, any];
+
+        return result.affectedRows > 0;
     },
 
-    removeItemById: (id: number): boolean => {
-        const itemIndex = cartItems.findIndex(item => item.id === id);
+    async removeItemById(item_ID: number, usuario_ID: number): Promise<boolean> {
+        const query = 'DELETE FROM Carrinho WHERE item_ID = ? AND usuario_ID = ?';
+        const [result] = await connection.execute(query, [item_ID, usuario_ID]) as [ResultSetHeader, any];
 
-        return itemIndex > -1
-            ? (cartItems.splice(itemIndex, 1), true)
-            : false;
+        return result.affectedRows === 1;
     },
 
-    addItem: (productToAdd: any, quantity: number) => {
-        const itemIndex = cartItems.findIndex(item => item.id === productToAdd.id);
+    async addItem(produto_ID: number, usuario_ID: number, quantity: number): Promise<number> {
 
-        if (itemIndex > -1) {
-            cartItems[itemIndex].quantity += quantity;
-            return cartItems[itemIndex];
-        } else {
-            const newItem = {
-                id: productToAdd.id,
-                name: productToAdd.name,
-                price: productToAdd.price,
-                quantity: quantity
-            };
-            cartItems.push(newItem);
-            return newItem;
-        }
-    },
+        const query = `
+            INSERT INTO Carrinho (usuario_ID, produto_ID, quantity)
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                quantity = quantity + VALUES(quantity);
+        `;
+
+        const [result] = await connection.execute(query, [usuario_ID, produto_ID, quantity]) as [ResultSetHeader, any];
+
+        return result.insertId;
+    }
 };

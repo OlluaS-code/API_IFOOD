@@ -6,7 +6,7 @@ import { UserRepository } from '../../database/Usuário/UsuarioData';
 
 export const GetAll = async (req: Request, res: Response) => {
 
-    const usersList = UserRepository.getAll();
+    const usersList = await UserRepository.getAll();
 
     return res.status(StatusCodes.OK).json(usersList);
 };

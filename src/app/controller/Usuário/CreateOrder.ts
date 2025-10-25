@@ -1,49 +1,33 @@
 import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import { CartRepository } from '../../database/Carrinho/CarrinhoData';
 import { OrderRepository } from '../../database/Order/OrderData';
-import { ProductRepository } from '../../database/Produtos/ProdutoData';
 
 
 export const createOrder = async (req: Request, res: Response) => {
 
-    const userId = Number(req.userId);
+    const usuario_ID = Number((req as any).usuario_ID);
 
-    const cart = CartRepository.getCart(userId);
+    try {
+        const orderResult = await OrderRepository.createOrder(usuario_ID);
 
-    if (cart.length === 0) {
-        return res.status(StatusCodes.BAD_REQUEST).json({ error: 'O carrinho está vazio. Adicione produtos para finalizar a compra.' });
-    }
-
-    for (const item of cart) {
-        const stockUpdated = ProductRepository.decreaseStock(item.id, item.quantity);
-
-        if (!stockUpdated) {
+        if (orderResult === false) {
             return res.status(StatusCodes.BAD_REQUEST).json({
-                error: `Falha ao processar produto ID ${item.id}. Estoque insuficiente ou produto não existe.`
+                error: 'O carrinho está vazio. Adicione produtos para finalizar a compra.'
             });
         }
+
+        return res.status(StatusCodes.CREATED).json({
+            message: `Pedido #${orderResult.pedidoId} concluído com sucesso! O carrinho foi esvaziado.`,
+            pedidoId: orderResult.pedidoId,
+            valorTotal: orderResult.valorTotal,
+            itensComprados: orderResult.itens
+        });
+
+    } catch (error) {
+
+        console.error('Erro na transação de pedido:', error);
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            error: 'Erro interno. A transação falhou e o carrinho não foi esvaziado.'
+        });
     }
-
-
-    const totalValue = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-
-    const orderData = {
-        id: Date.now(),
-        userId: userId,
-        items: cart,
-        total: totalValue,
-        status: 'Processando Pagamento',
-        createdAt: new Date(),
-    };
-
-    const newOrder = OrderRepository.create(orderData);
-    CartRepository.clearCart();
-
-
-    return res.status(StatusCodes.CREATED).json({
-        message: `Pedido #${newOrder.id} realizado com sucesso!`,
-        order: newOrder,
-        total: totalValue
-    });
 };

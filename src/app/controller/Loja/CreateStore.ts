@@ -25,7 +25,7 @@ export const create = async (req: Request<{}, {}, ICreateStoreBody>, res: Respon
 
     const storeData = req.body;
 
-    const newStore = StoreRepository.create(storeData);
+    const newStore = await StoreRepository.create(storeData);
 
     return res.status(StatusCodes.CREATED).json({
         message: 'Loja cadastrada com sucesso.',

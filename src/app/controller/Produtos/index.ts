@@ -1,7 +1,7 @@
 import * as create from './CreateProduct';
 import * as update from './UpdateProducts';
 import * as getAll from './GetAll';
-import * as getProduct from './GetProductById';
+import * as getProduct from './findByStoreId';
 import * as remove from './DeleteProducts';
 
 
