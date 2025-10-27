@@ -67,21 +67,21 @@ router.put(
 //CARRINHO (REQUER AUTENTICAÇÃO) -------------------------------
 
 router.post(
-    '/cart/:usuario_ID/loja/:storeId',
+    '/cart/:usuario_ID/stores/:storeId',
     ensureAuthenticated,
     CarrinhoController.addToCartValidation,
     CarrinhoController.addToCart
 );
 
 router.delete(
-    'cart/:usuario_ID/itens/:item_ID',
+    '/cart/:usuario_ID/itens/:item_ID',
     ensureAuthenticated,
     CarrinhoController.removeItemByIdValidation,
     CarrinhoController.removeItemById
 );
 
 router.get(
-    '/cart',
+    '/cart/:userId',
     ensureAuthenticated,
     CarrinhoController.getCart
 );
@@ -91,6 +91,7 @@ router.get(
 router.post(
     '/users/:usuario_ID/orders',
     ensureAuthenticated,
+    UserController.CreateOrderValidation,
     UserController.createOrder
 );
 
@@ -109,13 +110,13 @@ router.get(
 );
 
 router.put(
-    'stores/:storeId/products/:id',
+    '/stores/:store_ID/products/:product_ID',
     ProductController.UpdateItemValidation,
     ProductController.updateProducts
 );
 
 router.delete(
-    'stores/:storeId/products/:id',
+    '/stores/:store_ID/products/:product_ID',
     ProductController.deleteProductsValidation,
     ProductController.deleteProducts
 );

@@ -1,11 +1,29 @@
 import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
+import * as yup from "yup";
 import { OrderRepository } from '../../database/Order/OrderData';
+import { validation } from '../../shared/middlewares';
+
+export interface IOrderParams {
+    usuario_ID?: number;
+}
+
+export const CreateOrderValidation = validation((getSchema) => ({
+    params: getSchema<IOrderParams>(yup.object().shape({
+        usuario_ID: yup.number().required().moreThan(0)
+    })),
+}));
 
 
-export const createOrder = async (req: Request, res: Response) => {
+export const createOrder = async (req: Request<IOrderParams>, res: Response) => {
 
     const usuario_ID = Number((req as any).usuario_ID);
+
+    if (!usuario_ID || usuario_ID <= 0) {
+         return res.status(StatusCodes.UNAUTHORIZED).json({
+            error: 'Usuário não autenticado ou ID inválido. Acesso negado.'
+        });
+    }
 
     try {
         const orderResult = await OrderRepository.createOrder(usuario_ID);
@@ -24,6 +42,12 @@ export const createOrder = async (req: Request, res: Response) => {
         });
 
     } catch (error) {
+
+        if (error instanceof Error) {
+            return res.status(StatusCodes.BAD_REQUEST).json({
+                error: error.message
+            });
+        }
 
         console.error('Erro na transação de pedido:', error);
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({

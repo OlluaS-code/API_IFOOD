@@ -66,7 +66,7 @@ export const ProductRepository = {
 
         const setClause = fieldsToUpdate.map(field => `${field} = ?`).join(', ');
 
-        const query = `UPDATE Produto SET ${setClause} WHERE product_ID = ? AND storeId = ?`;
+        const query = `UPDATE Produto SET ${setClause} WHERE produto_ID = ? AND storeId = ?`;
 
         values.push(product_ID);
         values.push(storeId);
@@ -75,7 +75,7 @@ export const ProductRepository = {
 
         return result.affectedRows;
     },
-    async decreaseStock(produto_ID: number, quantity: number, loja_ID: number): Promise<DecreaseResult> {
+    async decreaseStock(produto_ID: number, quantity: number, loja_ID: number): Promise<number | DecreaseResult> {
 
         const selectQuery = `SELECT stock, storeId FROM Produto WHERE produto_ID = ?`;
         const [rows] = await connection.execute<Products[]>(selectQuery, [produto_ID]);

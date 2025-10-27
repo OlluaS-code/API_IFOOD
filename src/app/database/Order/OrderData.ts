@@ -1,16 +1,26 @@
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import connection from '../connection/conection';
+import { ProductRepository } from '../Produtos/ProdutoData';
 
 interface IOrderResult {
     pedidoId: number;
     valorTotal: number;
     itens: any[];
 }
-interface IOrderDetails extends RowDataPacket {
-    pedido_ID: number;
-    valor_total: number;
-    data_pedido: Date;
-    status: string;
+interface ICartItemDetails extends RowDataPacket {
+    produto_ID: number;
+    quantity: number;
+    price: number;
+    name: string;
+    storeId: number;
+    stock: number;
+}
+
+interface DecreaseResult {
+    success: boolean;
+    affectedRows?: number;
+    code?: string;
+    message?: string;
 }
 
 export const OrderRepository = {
@@ -18,11 +28,18 @@ export const OrderRepository = {
     async createOrder(usuario_ID: number): Promise<IOrderResult | false> {
 
         const getCartItemsQuery = `
-            SELECT produto_ID, quantity
-            FROM Carrinho
-            WHERE usuario_ID = ?;
+            SELECT
+                ci.produto_ID,
+                ci.quantity,
+                p.price,
+                p.name,
+                p.storeId,
+                p.stock
+            FROM Carrinho ci
+            JOIN Produto p ON ci.produto_ID = p.produto_ID
+            WHERE ci.usuario_ID = ?;
         `;
-        const [cartItems] = await connection.execute<IOrderDetails[]>(getCartItemsQuery, [usuario_ID]);
+        const [cartItems] = await connection.execute<ICartItemDetails[]>(getCartItemsQuery, [usuario_ID]);
 
         if (cartItems.length === 0) {
             return false;
@@ -32,35 +49,30 @@ export const OrderRepository = {
         let finalItems: any[] = [];
 
         for (const item of cartItems) {
-            const [productRows] = await connection.execute<any[]>(
-                'SELECT price, name FROM Produto WHERE produto_ID = ?',
-                [item.produto_ID]
-            );
-            const product = productRows[0];
-
-            if (!product) {
-                throw new Error(`Produto ID ${item.produto_ID} não encontrado.`);
+            if (item.stock < item.quantity) {
+                throw new Error(`Estoque insuficiente para o Produto ID ${item.produto_ID}. Disponível: ${item.stock}.`);
             }
 
-            const itemTotal = product.price * item.quantity;
+            const itemTotal = item.price * item.quantity;
             valorTotal += itemTotal;
 
             finalItems.push({
                 produto_ID: item.produto_ID,
-                name: product.name,
+                name: item.name,
                 quantity: item.quantity,
-                price: product.price,
+                price: item.price,
                 total: itemTotal
             });
         }
 
         let pedidoId: number = 0;
+        const connectionInstance = await connection.getConnection();
 
-        await connection.beginTransaction();
+        await connectionInstance.beginTransaction();
 
         try {
             const insertOrderQuery = 'INSERT INTO Pedido (usuario_ID, valor_total, status) VALUES (?, ?, ?)';
-            const [orderResult] = await connection.execute(insertOrderQuery, [
+            const [orderResult] = await connectionInstance.execute(insertOrderQuery, [
                 usuario_ID,
                 valorTotal,
                 'CONCLUIDO'
@@ -68,23 +80,42 @@ export const OrderRepository = {
 
             pedidoId = orderResult.insertId;
 
-            const clearCartQuery = 'DELETE FROM Carrinho WHERE usuario_ID = ?';
-            await connection.execute(clearCartQuery, [usuario_ID]);
+            for (const item of cartItems) {
+                const stockResult = await ProductRepository.decreaseStock(
+                    item.produto_ID,
+                    item.quantity,
+                    item.storeId
+                );
 
-            await connection.commit();
+                if (typeof stockResult === 'object' && stockResult.success === false) {
+                    throw new Error(stockResult.message || `Falha no processamento do Produto ID ${item.produto_ID}.`);
+                }
+
+                let affectedRows = (typeof stockResult === 'number') ? stockResult : stockResult.affectedRows;
+
+                if (affectedRows !== 1) {
+                    throw new Error(`Falha de concorrência: Estoque do Produto ID ${item.produto_ID} não pôde ser atualizado.`);
+                }
+            }
+
+            const clearCartQuery = 'DELETE FROM Carrinho WHERE usuario_ID = ?';
+            await connectionInstance.execute(clearCartQuery, [usuario_ID]);
+
+            await connectionInstance.commit();
 
             return { pedidoId, valorTotal, itens: finalItems };
 
         } catch (error) {
-            await connection.rollback();
+            await connectionInstance.rollback();
             throw error;
+        } finally {
+            connectionInstance.release();
         }
     },
-    async getOrdersByUser(usuario_ID: number): Promise<IOrderDetails[]> {
+
+    async getOrdersByUser(usuario_ID: number): Promise<any[]> {
         const query = 'SELECT pedido_ID, valor_total, data_pedido, status FROM Pedido WHERE usuario_ID = ? ORDER BY data_pedido DESC';
-
-        const [rows] = await connection.execute<IOrderDetails[]>(query, [usuario_ID]);
-
+        const [rows] = await connection.execute<any[]>(query, [usuario_ID]);
         return rows;
     }
 };

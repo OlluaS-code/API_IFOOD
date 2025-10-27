@@ -13,7 +13,7 @@ export const CartRepository = {
     async getCart(usuario_ID: number): Promise<ICartItem[]> {
         const query = `
             SELECT
-                item_ID, produto_ID, quantity
+                usuario_ID, item_ID, produto_ID, quantity
             FROM Carrinho
             WHERE usuario_ID = ?
         `;
